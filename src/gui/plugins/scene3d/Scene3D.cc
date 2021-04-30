@@ -231,6 +231,9 @@ inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \brief Helper object to move user camera
     public: MoveToHelper moveToHelper;
 
+    /// \brief Target to view wireframes
+    public: std::string viewWireframesTarget;
+
     /// \brief Target to view collisions
     public: std::string viewCollisionsTarget;
 
@@ -432,6 +435,9 @@ inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \brief mutex to protect the render condition variable
     /// Used when recording in lockstep mode.
     public: std::mutex renderMutex;
+
+    /// \brief View wireframes service
+    public: std::string viewWireframesService;
 
     /// \brief View collisions service
     public: std::string viewCollisionsService;
@@ -832,6 +838,32 @@ void IgnRenderer::Render()
       }
 
       this->dataPtr->viewCollisionsTarget.clear();
+    }
+  }
+
+  // View collisions
+  {
+    IGN_PROFILE("IgnRenderer::Render ViewWireframes");
+    if (!this->dataPtr->viewWireframesTarget.empty())
+    {
+      rendering::NodePtr targetNode =
+          scene->NodeByName(this->dataPtr->viewWireframesTarget);
+      auto targetVis = std::dynamic_pointer_cast<rendering::Visual>(targetNode);
+
+      if (targetVis)
+      {
+        Entity targetEntity =
+            std::get<int>(targetVis->UserData("gazebo-entity"));
+        this->dataPtr->renderUtil.ViewWireframes(targetEntity);
+      }
+      else
+      {
+        ignerr << "Unable to find node name ["
+               << this->dataPtr->viewWireframesTarget
+               << "] to view wireframes" << std::endl;
+      }
+
+      this->dataPtr->viewWireframesTarget.clear();
     }
   }
 
@@ -1971,6 +2003,13 @@ void IgnRenderer::SetMoveToPose(const math::Pose3d &_pose)
 }
 
 /////////////////////////////////////////////////
+void IgnRenderer::SetViewWireframesTarget(const std::string &_target)
+{
+  std::lock_guard<std::mutex> lock(this->dataPtr->mutex);
+  this->dataPtr->viewWireframesTarget = _target;
+}
+
+/////////////////////////////////////////////////
 void IgnRenderer::SetViewCollisionsTarget(const std::string &_target)
 {
   std::lock_guard<std::mutex> lock(this->dataPtr->mutex);
@@ -2696,6 +2735,13 @@ void Scene3D::LoadConfig(const tinyxml2::XMLElement *_pluginElem)
   ignmsg << "Camera pose topic advertised on ["
          << this->dataPtr->cameraPoseTopic << "]" << std::endl;
 
+  // view wireframes service
+  this->dataPtr->viewWireframesService = "/gui/view/wireframes";
+  this->dataPtr->node.Advertise(this->dataPtr->viewWireframesService,
+      &Scene3D::OnViewWireframes, this);
+  ignmsg << "View wireframes service on ["
+         << this->dataPtr->viewWireframesService << "]" << std::endl;
+
   // view collisions service
   this->dataPtr->viewCollisionsService = "/gui/view/collisions";
   this->dataPtr->node.Advertise(this->dataPtr->viewCollisionsService,
@@ -2853,6 +2899,18 @@ bool Scene3D::OnMoveToPose(const msgs::GUICamera &_msg, msgs::Boolean &_res)
     pose.Pos().X() = math::INF_D;
 
   renderWindow->SetMoveToPose(pose);
+
+  _res.set_data(true);
+  return true;
+}
+
+/////////////////////////////////////////////////
+bool Scene3D::OnViewWireframes(const msgs::StringMsg &_msg,
+  msgs::Boolean &_res)
+{
+  auto renderWindow = this->PluginItem()->findChild<RenderWindowItem *>();
+
+  renderWindow->SetViewWireframesTarget(_msg.data());
 
   _res.set_data(true);
   return true;
@@ -3123,6 +3181,12 @@ void RenderWindowItem::SetViewAngle(const math::Vector3d &_direction)
 void RenderWindowItem::SetMoveToPose(const math::Pose3d &_pose)
 {
   this->dataPtr->renderThread->ignRenderer.SetMoveToPose(_pose);
+}
+
+/////////////////////////////////////////////////
+void RenderWindowItem::SetViewWireframesTarget(const std::string &_target)
+{
+  this->dataPtr->renderThread->ignRenderer.SetViewWireframesTarget(_target);
 }
 
 /////////////////////////////////////////////////
