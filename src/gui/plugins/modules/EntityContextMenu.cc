@@ -62,6 +62,9 @@ namespace ignition::gazebo
     /// \brief View collisions service name
     public: std::string viewCollisionsService;
 
+    /// \brief View contacts service name
+    public: std::string viewContactsService;
+
     /// \brief Name of world.
     public: std::string worldName;
   };
@@ -105,6 +108,9 @@ EntityContextMenu::EntityContextMenu()
 
   // For view collisions service requests
   this->dataPtr->viewCollisionsService = "/gui/view/collisions";
+
+  // For view contacts service requests
+  this->dataPtr->viewContactsService = "/gui/view/contacts";
 }
 
 /////////////////////////////////////////////////
@@ -205,6 +211,12 @@ void EntityContextMenu::OnRequest(const QString &_request, const QString &_data)
     ignition::msgs::StringMsg req;
     req.set_data(_data.toStdString());
     this->dataPtr->node.Request(this->dataPtr->viewCollisionsService, req, cb);
+  }
+  else if (request == "view_contacts")
+  {
+    ignition::msgs::StringMsg req;
+    req.set_data(_data.toStdString());
+    this->dataPtr->node.Request(this->dataPtr->viewContactsService, req, cb);
   }
   else
   {

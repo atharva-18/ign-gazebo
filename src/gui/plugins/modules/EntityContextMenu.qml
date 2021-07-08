@@ -80,6 +80,14 @@ Item {
       }
     }
     MenuItem {
+      id: viewContactsMenu
+      text: "Contacts"
+      onTriggered: {
+        menu.close()
+        context.OnRequest("view_contacts", context.entity)
+      }
+    }
+    MenuItem {
       id: viewInertiaMenu
       text: "Inertia"
       onTriggered: {
@@ -118,6 +126,7 @@ Item {
     viewInertiaMenu.enabled = false;
     viewWireframesMenu.enabled = false;
     viewCollisionsMenu.enabled = false;
+    viewContactsMenu.enabled = false;
 
     // enable / disable menu items
     if (context.type == "model" || context.type == "link" ||
@@ -140,6 +149,7 @@ Item {
       viewInertiaMenu.enabled = true;
       viewWireframesMenu.enabled = true;
       viewCollisionsMenu.enabled = true;
+      viewContactsMenu.enabled = true;
     }
 
     menu.open()
